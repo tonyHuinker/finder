@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json" // so we can ignore our non root CA on EH appliance
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,9 +16,13 @@ import (
 )
 
 var (
-	ehops  = make(map[string]string)
-	APIKey = "none"
-	Path   = "none"
+	ehops   = make(map[string]string)
+	APIKey  = "none"
+	Path    = "none"
+	keyfile = flag.String("k", "keys", "location of keyfile that contains hostname and APIKey")
+	metric  = flag.String("m", "uri_http_server_detail", "metric category you hope to be finding")
+	find    = flag.String("s", "", "sring you which to search for")
+	group   = flag.String("g", "", "name of the group to be created")
 )
 
 func terminate(message string) {
@@ -27,7 +32,7 @@ func terminatef(message string, v ...interface{}) {
 	log.Fatalf(message, v...)
 }
 func getKeys() {
-	keyfile, err := ioutil.ReadFile("keys")
+	keyfile, err := ioutil.ReadFile(*keyfile)
 	if err != nil {
 		terminatef("Could not find keys file", err.Error())
 	} else if err := json.NewDecoder(bytes.NewReader(keyfile)).Decode(&ehops); err != nil {
@@ -149,8 +154,9 @@ func ServerFinder(metricCategory string, search string) map[float64]string {
 }
 
 func main() {
+	flag.Parse()
 	getKeys()
-	servers := ServerFinder("uri_http_server_detail", "1400/SystemProperties/Control")
-	tagger("Sonos", servers)
+	servers := ServerFinder(*metric, *find)
+	tagger(*group, servers)
 
 }
